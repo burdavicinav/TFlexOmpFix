@@ -42,8 +42,6 @@ namespace TFlexOmpFix.Procedure
             decimal user,
             decimal? groupcode)
         {
-            System.Windows.Forms.MessageBox.Show(path);
-
             OracleParameterCollection pars = command.Parameters;
 
             FileInfo file = new FileInfo(path);
