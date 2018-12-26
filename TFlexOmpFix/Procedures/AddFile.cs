@@ -42,6 +42,8 @@ namespace TFlexOmpFix.Procedure
             decimal user,
             decimal? groupcode)
         {
+            System.Windows.Forms.MessageBox.Show(path);
+
             OracleParameterCollection pars = command.Parameters;
 
             FileInfo file = new FileInfo(path);
@@ -55,18 +57,18 @@ namespace TFlexOmpFix.Procedure
 
                 // хеш
                 SHA1 sha = new SHA1CryptoServiceProvider();
-                byte[] hash = sha.ComputeHash(stream);
-
-                stream.Close();
+                byte[] hash = sha.ComputeHash(bts);
 
                 pars["p_code"].Value = code;
                 pars["p_fname"].Value = file.Name;
-                pars["p_fhash"].Value = hash;
+                pars["p_fhash"].Value = (System.BitConverter.ToString(hash)).Replace("-", "").ToLower();
                 pars["p_file"].Value = bts;
                 pars["p_user"].Value = user;
                 pars["p_groupcode"].Value = groupcode;
 
                 command.ExecuteNonQuery();
+
+                stream.Close();
             }
         }
     }
