@@ -210,6 +210,31 @@ namespace TFlexOmpFix
                     // присоединенный файл
                     prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP);
 
+                    // модели для детали
+                    var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem);
+
+                    foreach (var model in models)
+                    {
+                        ElementDataConfig modelDataConfig = new ElementDataConfig(model, scheme);
+                        ElementData modelData = modelDataConfig.ConfigData();
+
+                        if (modelData.FilePath != null)
+                        {
+                            try
+                            {
+                                prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP);
+                            }
+                            catch (FileNotFoundException)
+                            {
+                                iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                            }
+                            catch (Exception)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+
                     break;
 
                 default:
@@ -361,6 +386,31 @@ namespace TFlexOmpFix
                                 catch (Exception)
                                 {
                                     throw;
+                                }
+                            }
+
+                            // модели для детали
+                            var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == elem);
+
+                            foreach (var model in models)
+                            {
+                                ElementDataConfig modelDataConfig = new ElementDataConfig(model, scheme);
+                                ElementData modelData = modelDataConfig.ConfigData();
+
+                                if (modelData.FilePath != null)
+                                {
+                                    try
+                                    {
+                                        prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP);
+                                    }
+                                    catch (FileNotFoundException)
+                                    {
+                                        iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                    }
+                                    catch (Exception)
+                                    {
+                                        throw;
+                                    }
                                 }
                             }
 
