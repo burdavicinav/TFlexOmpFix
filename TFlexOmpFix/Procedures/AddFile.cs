@@ -18,6 +18,10 @@ namespace TFlexOmpFix.Procedure
             OracleParameter p_file = new OracleParameter("p_file", OracleDbType.Blob);
             OracleParameter p_user = new OracleParameter("p_user", OracleDbType.Decimal);
             OracleParameter p_groupcode = new OracleParameter("p_groupcode", OracleDbType.Decimal);
+            OracleParameter p_linkdoccode = new OracleParameter("p_linkdoccode", OracleDbType.Decimal);
+            OracleParameter p_doccode = new OracleParameter("p_doccode", OracleDbType.Decimal);
+
+            p_doccode.Direction = System.Data.ParameterDirection.Output;
 
             command = new OracleCommand();
             command.Connection = Connection.GetInstance();
@@ -32,7 +36,9 @@ namespace TFlexOmpFix.Procedure
                             p_fhash,
                             p_file,
                             p_user,
-                            p_groupcode
+                            p_groupcode,
+                            p_linkdoccode,
+                            p_doccode
                 });
         }
 
@@ -40,7 +46,9 @@ namespace TFlexOmpFix.Procedure
             decimal code,
             string path,
             decimal user,
-            decimal? groupcode)
+            decimal? groupcode,
+            decimal? linkdoccode,
+            ref decimal doccode)
         {
             OracleParameterCollection pars = command.Parameters;
 
@@ -63,8 +71,11 @@ namespace TFlexOmpFix.Procedure
                 pars["p_file"].Value = bts;
                 pars["p_user"].Value = user;
                 pars["p_groupcode"].Value = groupcode;
+                pars["p_linkdoccode"].Value = linkdoccode;
 
                 command.ExecuteNonQuery();
+
+                decimal.TryParse(pars["p_doccode"].Value.ToString(), out doccode);
 
                 stream.Close();
             }

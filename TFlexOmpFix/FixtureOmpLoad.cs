@@ -114,6 +114,7 @@ namespace TFlexOmpFix
 
             // код БД
             decimal code = 0;
+            decimal doccode = 0;
 
             // синхронизация с КИС "Омега"
             V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode);
@@ -155,7 +156,7 @@ namespace TFlexOmpFix
                         string filePattern = Regex.Replace(fileInfo.Name, @"\D", "");
                         if (filePattern == signPattern && file.Contains("СП"))
                         {
-                            prFile.Exec(code, file, ompUserCode, synchObj.FILEGROUP);
+                            prFile.Exec(code, file, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
                         }
                     }
 
@@ -173,7 +174,7 @@ namespace TFlexOmpFix
                         ref code);
 
                     // присоединенный файл
-                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP);
+                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
                     break;
 
@@ -191,7 +192,7 @@ namespace TFlexOmpFix
                         ref code);
 
                     // присоединенный файл
-                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP);
+                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
                     break;
 
@@ -208,7 +209,7 @@ namespace TFlexOmpFix
                         ref code);
 
                     // присоединенный файл
-                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP);
+                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
                     // модели для детали
                     var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem);
@@ -222,7 +223,9 @@ namespace TFlexOmpFix
                         {
                             try
                             {
-                                prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP);
+                                decimal linkdoccode = 0;
+
+                                prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP, doccode, ref linkdoccode);
                             }
                             catch (FileNotFoundException)
                             {
@@ -325,7 +328,7 @@ namespace TFlexOmpFix
                                 ref code);
 
                             // присоединенный файл
-                            prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP);
+                            prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
                             break;
 
@@ -346,7 +349,7 @@ namespace TFlexOmpFix
                             {
                                 try
                                 {
-                                    prFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP);
+                                    prFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
                                 }
                                 catch (FileNotFoundException)
                                 {
@@ -377,14 +380,16 @@ namespace TFlexOmpFix
                             {
                                 try
                                 {
-                                    prFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP);
+                                    prFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
                                 }
                                 catch (FileNotFoundException)
                                 {
+                                    doccode = 0;
                                     iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
                                 }
                                 catch (Exception)
                                 {
+                                    doccode = 0;
                                     throw;
                                 }
                             }
@@ -392,8 +397,12 @@ namespace TFlexOmpFix
                             // модели для детали
                             var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == elem);
 
+                            bool modelExists = false;
+
                             foreach (var model in models)
                             {
+                                modelExists = true;
+
                                 ElementDataConfig modelDataConfig = new ElementDataConfig(model, scheme);
                                 ElementData modelData = modelDataConfig.ConfigData();
 
@@ -401,7 +410,47 @@ namespace TFlexOmpFix
                                 {
                                     try
                                     {
-                                        prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP);
+                                        decimal linkdoccode = 0;
+
+                                        prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP,
+                                            (doccode == 0) ? null : (decimal?)doccode, ref linkdoccode);
+                                    }
+                                    catch (FileNotFoundException)
+                                    {
+                                        iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                    }
+                                    catch (Exception)
+                                    {
+                                        throw;
+                                    }
+                                }
+                            }
+
+                            // если модель не найдена в структуре изделия,
+                            // то открывается документ на деталь, если есть
+                            if (!modelExists)
+                            {
+                                if (elemData.FilePath != null)
+                                {
+                                    try
+                                    {
+                                        if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
+
+                                        // открыть документ входящей сборки
+                                        Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false);
+
+                                        // добавить документ в стек
+                                        stackDocs.Add(linkDoc);
+
+                                        // экспорт детали
+                                        ExportDoc(linkDoc);
+
+                                        // сохранение и закрытие документа
+                                        linkDoc.Save();
+                                        linkDoc.Close();
+
+                                        // удалить из стека документ
+                                        stackDocs.Remove(linkDoc);
                                     }
                                     catch (FileNotFoundException)
                                     {
