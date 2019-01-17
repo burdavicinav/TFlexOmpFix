@@ -238,6 +238,28 @@ namespace TFlexOmpFix
                         }
                     }
 
+                    // моделями также являются невидимые фрагменты у деталей
+                    foreach (var fragment in doc.GetFragments().Where(x => !x.Visible))
+                    {
+                        if (fragment.FullFilePath != null)
+                        {
+                            try
+                            {
+                                decimal linkdoccode = 0;
+
+                                prFile.Exec(code, fragment.FullFilePath, ompUserCode, synchObj.FILEGROUP, doccode, ref linkdoccode);
+                            }
+                            catch (FileNotFoundException)
+                            {
+                                iLog.Write("ОШИБКА! Файл " + fragment.FullFilePath + " не найден!");
+                            }
+                            catch (Exception)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+
                     break;
 
                 default:
