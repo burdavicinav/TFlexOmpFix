@@ -27,7 +27,7 @@ namespace TFlexOmpFix
     {
         private ILogging iLog;
 
-        private Document doc;
+        private readonly Document doc;
 
         private Settings settings;
 
@@ -73,8 +73,6 @@ namespace TFlexOmpFix
         private void ExportDoc(Document doc)
         {
             // валидность структуры
-            //if (!IsValid(doc)) throw new DocStructureNotValidException();
-
             IsValid(doc);
 
             // структура изделия
@@ -122,7 +120,8 @@ namespace TFlexOmpFix
             // если головной элемент не синхронизирован - выход
             if (synchObj == null) return;
 
-            // экспорт родителя
+            #region экспорт родителя
+
             switch (synchObj.KOTYPE)
             {
                 case (decimal)ObjTypes.SpecFixture:
@@ -141,8 +140,6 @@ namespace TFlexOmpFix
 
                     // родительский элемент
                     parent = code;
-
-                    //System.Windows.Forms.MessageBox.Show(elemData.Sign + " " + doc.FilePath);
 
                     // поиск файла спецификации по шаблону
                     string signPattern = Regex.Replace(elemData.Sign, @"\D", "");
@@ -266,7 +263,10 @@ namespace TFlexOmpFix
                     break;
             }
 
-            // элементы спецификации
+            #endregion экспорт родителя
+
+            #region элементы спецификации
+
             if (elemData.MainSection == "Сборочные единицы")
             {
                 foreach (var elem in structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem))
@@ -310,8 +310,8 @@ namespace TFlexOmpFix
                                 {
                                     if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
 
-                                    // открыть документ входящей сборки
-                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false);
+                                    // открыть документ входящей сборки в режиме чтения
+                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false, true);
 
                                     // добавить документ в стек
                                     stackDocs.Add(linkDoc);
@@ -319,8 +319,7 @@ namespace TFlexOmpFix
                                     // экспорт входящей сборки
                                     ExportDoc(linkDoc);
 
-                                    // сохранение и закрытие документа
-                                    linkDoc.Save();
+                                    // закрытие документа
                                     linkDoc.Close();
 
                                     // удалить из стека документ
@@ -419,12 +418,8 @@ namespace TFlexOmpFix
                             // модели для детали
                             var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == elem);
 
-                            bool modelExists = false;
-
                             foreach (var model in models)
                             {
-                                modelExists = true;
-
                                 ElementDataConfig modelDataConfig = new ElementDataConfig(model, scheme);
                                 ElementData modelData = modelDataConfig.ConfigData();
 
@@ -448,40 +443,35 @@ namespace TFlexOmpFix
                                 }
                             }
 
-                            // если модель не найдена в структуре изделия,
-                            // то открывается документ на деталь, если есть
-                            if (!modelExists)
+                            // открывается документ на деталь, если есть
+                            if (elemData.FilePath != null)
                             {
-                                if (elemData.FilePath != null)
+                                try
                                 {
-                                    try
-                                    {
-                                        if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
+                                    if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
 
-                                        // открыть документ входящей сборки
-                                        Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false);
+                                    // открыть документ входящей сборки в режиме чтения
+                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false, true);
 
-                                        // добавить документ в стек
-                                        stackDocs.Add(linkDoc);
+                                    // добавить документ в стек
+                                    stackDocs.Add(linkDoc);
 
-                                        // экспорт детали
-                                        ExportDoc(linkDoc);
+                                    // экспорт детали
+                                    ExportDoc(linkDoc);
 
-                                        // сохранение и закрытие документа
-                                        linkDoc.Save();
-                                        linkDoc.Close();
+                                    // закрытие документа
+                                    linkDoc.Close();
 
-                                        // удалить из стека документ
-                                        stackDocs.Remove(linkDoc);
-                                    }
-                                    catch (FileNotFoundException)
-                                    {
-                                        iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
-                                    }
-                                    catch (Exception)
-                                    {
-                                        throw;
-                                    }
+                                    // удалить из стека документ
+                                    stackDocs.Remove(linkDoc);
+                                }
+                                catch (FileNotFoundException)
+                                {
+                                    iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                }
+                                catch (Exception)
+                                {
+                                    throw;
                                 }
                             }
 
@@ -506,6 +496,8 @@ namespace TFlexOmpFix
                     }
                 }
             }
+
+            #endregion элементы спецификации
         }
 
         public FixtureOmpLoad(Settings settings, ILogging iLog, Document doc)
@@ -553,18 +545,12 @@ namespace TFlexOmpFix
                 // при возникновении ошибки закрыть все дочерние документы
                 foreach (var document in stackDocs)
                 {
-                    document.Save();
                     document.Close();
                 }
 
                 stackDocs.Clear();
 
                 throw;
-            }
-            finally
-            {
-                // сохранить основной документ
-                doc.Save();
             }
         }
     }

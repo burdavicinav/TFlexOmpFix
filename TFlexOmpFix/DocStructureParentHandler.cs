@@ -12,13 +12,6 @@ namespace TFlexOmpFix
         {
             ProductStructure prod = doc.GetProductStructures().FirstOrDefault();
 
-            // обновление спецификации
-            doc.BeginChanges("begin");
-            prod.UpdateStructure();
-
-            // сохранить изменения
-            doc.EndChanges();
-
             if (prod.GetAllRowElements().Where(x => x.ParentRowElement == null).Count() != 1)
             {
                 throw new DocStructureParentException(doc.FileName);
