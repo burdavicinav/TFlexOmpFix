@@ -8,9 +8,18 @@ namespace TFlexOmpFix
         DocStructureHandler,
         IDocStructureHandler
     {
-        public void IsValid(Document doc)
+        public void IsValid(Document doc, string configuration = null)
         {
-            ProductStructure prod = doc.GetProductStructures().FirstOrDefault();
+            ProductStructure prod;
+
+            if (doc.ModelConfigurations.ConfigurationCount == 0)
+            {
+                prod = doc.GetProductStructures().FirstOrDefault();
+            }
+            else
+            {
+                prod = doc.GetProductStructures().Where(x => x.Name == configuration).FirstOrDefault();
+            }
 
             RowElement row = prod.GetAllRowElements().Where(
                 x => x.ParentRowElement == null).FirstOrDefault();
@@ -30,7 +39,7 @@ namespace TFlexOmpFix
             }
             else if (Next != null)
             {
-                Next.IsValid(doc);
+                Next.IsValid(doc, configuration);
             }
         }
     }

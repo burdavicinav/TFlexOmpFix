@@ -70,13 +70,27 @@ namespace TFlexOmpFix
             iLog.Write("* " + rowText.ToString());
         }
 
-        private void ExportDoc(Document doc)
+        private void ExportDoc(Document doc, string configuration = null)
         {
             // валидность структуры
-            IsValid(doc);
+            IsValid(doc, configuration);
 
             // структура изделия
-            ProductStructure structure = doc.GetProductStructures().FirstOrDefault();
+            ProductStructure structure;
+
+            if (doc.ModelConfigurations.ConfigurationCount == 0 || configuration == null)
+            {
+                structure = doc
+                    .GetProductStructures()
+                    .FirstOrDefault();
+            }
+            else
+            {
+                structure = doc
+                    .GetProductStructures()
+                    .Where(x => x.Name == configuration)
+                    .FirstOrDefault();
+            }
 
             // схема параметров
             SchemeDataConfig schemeConfig = new SchemeDataConfig(structure);
@@ -269,7 +283,11 @@ namespace TFlexOmpFix
 
             if (elemData.MainSection == "Сборочные единицы")
             {
-                foreach (var elem in structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem))
+                foreach (var elem in
+                    structure
+                    .GetAllRowElements()
+                    .Where(x => x.ParentRowElement == parentElem)
+                    )
                 {
                     // получение данных о документе
                     dataConfig = new ElementDataConfig(elem, scheme);
@@ -317,7 +335,7 @@ namespace TFlexOmpFix
                                     stackDocs.Add(linkDoc);
 
                                     // экспорт входящей сборки
-                                    ExportDoc(linkDoc);
+                                    ExportDoc(linkDoc, elemData.Sign);
 
                                     // закрытие документа
                                     linkDoc.Close();
@@ -457,7 +475,7 @@ namespace TFlexOmpFix
                                     stackDocs.Add(linkDoc);
 
                                     // экспорт детали
-                                    ExportDoc(linkDoc);
+                                    ExportDoc(linkDoc, elemData.Sign);
 
                                     // закрытие документа
                                     linkDoc.Close();
@@ -508,11 +526,11 @@ namespace TFlexOmpFix
         }
 
         /// <summary>
-        /// Верификации документа, не вызывает исключений
+        /// Верификации документа
         /// </summary>
         /// <param name="doc">Документ</param>
         /// <returns></returns>
-        public void IsValid(Document doc)
+        public void IsValid(Document doc, string configuration = null)
         {
             // существование единственной структуры
             DocStructureSingularHandler singHandler = new DocStructureSingularHandler();
@@ -530,7 +548,7 @@ namespace TFlexOmpFix
             parentHandler.Next = parentSignHandler;
             parentSignHandler.Next = parentDocTypeHandler;
 
-            singHandler.IsValid(doc);
+            singHandler.IsValid(doc, configuration);
         }
 
         public void Export()

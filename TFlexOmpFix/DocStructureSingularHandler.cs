@@ -8,15 +8,18 @@ namespace TFlexOmpFix
         DocStructureHandler,
         IDocStructureHandler
     {
-        public void IsValid(Document doc)
+        public void IsValid(Document doc, string configuration = null)
         {
-            if (doc.GetProductStructures().Count() != 1)
+            if (doc.ModelConfigurations.ConfigurationCount == 0
+                && doc.GetProductStructures().Count() != 1
+                || doc.ModelConfigurations.ConfigurationCount > 0
+                && doc.GetProductStructures().Where(x => x.Name == configuration).Count() == 0)
             {
                 throw new DocStructureException(doc.FileName);
             }
             else if (Next != null)
             {
-                Next.IsValid(doc);
+                Next.IsValid(doc, configuration);
             }
         }
     }

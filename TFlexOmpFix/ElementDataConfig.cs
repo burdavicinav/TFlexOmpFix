@@ -35,25 +35,34 @@ namespace TFlexOmpFix
         {
             ElementData elemData = new ElementData();
 
-            // ячейки данных
+            #region ячейки
+
             RowElementCell sectionCell = Element.GetCell(Scheme.SectionId);
+
             RowElementCell signCell = Element.GetCell(Scheme.SignId);
+
             RowElementCell nameCell = Element.GetCell(Scheme.NameId);
+
             RowElementCell qtyCell = Element.GetCell(Scheme.QtyId);
+
             RowElementCell positionCell = Element.Position;
+
             RowElementCell docCodeCell = Element.GetCell(Scheme.DocCodeId);
+
+            #endregion ячейки
 
             // секция
             elemData.Section = GetCellValue(sectionCell);
+
             // обозначение
             elemData.Sign = GetCellValue(signCell);
+
             // наименование
             elemData.Name = GetCellValue(nameCell);
 
             // количество
             string qtyStr = GetCellValue(qtyCell);
-            decimal qty;
-            bool isParse = decimal.TryParse(qtyStr, out qty);
+            bool isParse = decimal.TryParse(qtyStr, out decimal qty);
 
             elemData.Qty = (isParse) ? qty : 1;
 

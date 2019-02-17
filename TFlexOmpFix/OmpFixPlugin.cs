@@ -93,7 +93,11 @@ namespace TFlexOmpFix
                         // применение изменений
                         Connection.Commit();
 
-                        MessageBox.Show("Экспорт завершен!");
+                        MessageBox.Show(
+                            "Экспорт успешно завершен!",
+                            "Информация",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
                     }
                     catch (Exception e)
                     {
@@ -104,7 +108,7 @@ namespace TFlexOmpFix
 
                         MessageBox.Show(
                             e.Message,
-                            "Error",
+                            "Ошибка!",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                     }

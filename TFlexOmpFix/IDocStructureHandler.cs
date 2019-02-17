@@ -4,6 +4,6 @@ namespace TFlexOmpFix
 {
     public interface IDocStructureHandler
     {
-        void IsValid(Document doc);
+        void IsValid(Document doc, string configuration = null);
     }
 }
