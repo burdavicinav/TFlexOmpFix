@@ -112,6 +112,7 @@
     <Compile Include="IDocStructureHandler.cs" />
     <Compile Include="Objects\V_SEPO_TFLEX_OBJ_SYNCH.cs" />
     <Compile Include="Procedures\CreateDocument.cs" />
+    <Compile Include="Procedures\CreateFixture.cs" />
     <Compile Include="Procedures\CreateSpecDraw.cs" />
     <Compile Include="Repositories\BORepository.cs" />
     <Compile Include="Connection.cs" />

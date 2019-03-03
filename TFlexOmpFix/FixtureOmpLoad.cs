@@ -15,7 +15,7 @@ namespace TFlexOmpFix
     public enum ObjTypes
     {
         Document = 0, Specification = 1, Detail = 2, SpecDraw = 6,
-        UserDocument = 20, Complect = 22, SpecFixture = 31
+        UserDocument = 20, Complect = 22, SpecFixture = 31, Fixture = 32
     }
 
     public enum Sections
@@ -209,15 +209,30 @@ namespace TFlexOmpFix
 
                 case (decimal)ObjTypes.Detail:
 
-                    // создание детали
-                    CreateDetail pd = new CreateDetail();
-                    pd.Exec(
-                        elemData.Sign,
-                        elemData.Name,
-                        ownerCode,
-                        synchObj.BOSTATECODE,
-                        ompUserCode,
-                        ref code);
+                    if (Regex.IsMatch(elemData.Sign, @"^\d{4}-\d{4}$"))
+                    {
+                        // создание оснастки
+                        CreateFixture pd = new CreateFixture();
+                        pd.Exec(
+                            elemData.Sign,
+                            elemData.Name,
+                            ownerCode,
+                            synchObj.BOSTATECODE,
+                            ompUserCode,
+                            ref code);
+                    }
+                    else
+                    {
+                        // создание детали
+                        CreateDetail pd = new CreateDetail();
+                        pd.Exec(
+                            elemData.Sign,
+                            elemData.Name,
+                            ownerCode,
+                            synchObj.BOSTATECODE,
+                            ompUserCode,
+                            ref code);
+                    }
 
                     // присоединенный файл
                     prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
@@ -404,15 +419,32 @@ namespace TFlexOmpFix
 
                         case (decimal)ObjTypes.Detail:
 
-                            // создание детали
-                            CreateDetail pd = new CreateDetail();
-                            pd.Exec(
-                                elemData.Sign,
-                                elemData.Name,
-                                ownerCode,
-                                synchObj.BOSTATECODE,
-                                ompUserCode,
-                                ref code);
+                            if (Regex.IsMatch(elemData.Sign, @"^\d{4}-\d{4}$"))
+                            {
+                                synchObj.KOTYPE = (decimal)ObjTypes.Fixture;
+
+                                // создание оснастки
+                                CreateFixture pd = new CreateFixture();
+                                pd.Exec(
+                                    elemData.Sign,
+                                    elemData.Name,
+                                    ownerCode,
+                                    synchObj.BOSTATECODE,
+                                    ompUserCode,
+                                    ref code);
+                            }
+                            else
+                            {
+                                // создание детали
+                                CreateDetail pd = new CreateDetail();
+                                pd.Exec(
+                                    elemData.Sign,
+                                    elemData.Name,
+                                    ownerCode,
+                                    synchObj.BOSTATECODE,
+                                    ompUserCode,
+                                    ref code);
+                            }
 
                             // файл
                             if (elemData.FilePath != null)
