@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using TFlex.Model;
 using TFlexOmpFix.Exceptions;
@@ -31,9 +31,11 @@ namespace TFlexOmpFix
 
         private Settings settings;
 
-        private decimal ompUserCode, ownerCode;
+        private decimal ompUserCode, ownerCode, fixTypeCode;
 
         private List<Document> stackDocs;
+
+        private Stopwatch sw;
 
         private void ExportInizialize()
         {
@@ -47,27 +49,6 @@ namespace TFlexOmpFix
 
             // открытые документы
             stackDocs = new List<Document>();
-        }
-
-        private void LogElement(ElementData elemData)
-        {
-            StringBuilder rowText = new StringBuilder();
-
-            rowText.Append(elemData.Section);
-            rowText.Append(" ");
-            rowText.Append(elemData.Position);
-            rowText.Append(" ");
-            rowText.Append(elemData.Sign);
-            rowText.Append(" ");
-            rowText.Append(elemData.Name);
-            rowText.Append(" ");
-            rowText.Append(elemData.Qty);
-            rowText.Append(" ");
-            rowText.Append(elemData.DocCode);
-            rowText.Append(" ");
-            rowText.Append(elemData.FilePath);
-
-            iLog.Write("* " + rowText.ToString());
         }
 
         private void ExportDoc(Document doc, string configuration = null)
@@ -104,7 +85,8 @@ namespace TFlexOmpFix
             ElementData elemData = dataConfig.ConfigData();
 
             // логирование
-            LogElement(elemData);
+            iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName, elemData.Section, elemData.Position,
+                elemData.Sign, elemData.Name, elemData.Qty, elemData.DocCode, elemData.FilePath, null);
 
             // проверка обозначения у родителя
             if (elemData.Sign == String.Empty || elemData.Section == String.Empty)
@@ -129,7 +111,7 @@ namespace TFlexOmpFix
             decimal doccode = 0;
 
             // синхронизация с КИС "Омега"
-            V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode);
+            V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode, elemData.Sign);
 
             // если головной элемент не синхронизирован - выход
             if (synchObj == null) return;
@@ -140,13 +122,15 @@ namespace TFlexOmpFix
             {
                 case (decimal)ObjTypes.SpecFixture:
 
-                    // создание спецификации
+                    #region Спецификация оснастки
+
                     prSpec.Exec(
                         elemData.Sign,
                         elemData.Name,
                         ownerCode,
                         synchObj.BOSTATECODE,
                         ompUserCode,
+                        fixTypeCode,
                         ref code);
 
                     // очищение спецификации
@@ -171,11 +155,14 @@ namespace TFlexOmpFix
                         }
                     }
 
+                    #endregion Спецификация оснастки
+
                     break;
 
                 case (decimal)ObjTypes.SpecDraw:
 
-                    // создание сборочного чертежа
+                    #region Сборочный чертеж
+
                     prSpecDraw.Exec(
                         elemData.Sign,
                         elemData.Name,
@@ -187,12 +174,15 @@ namespace TFlexOmpFix
                     // присоединенный файл
                     prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
+                    #endregion Сборочный чертеж
+
                     break;
 
                 case (decimal)ObjTypes.Document:
                 case (decimal)ObjTypes.UserDocument:
 
-                    // создание документа
+                    #region Документация
+
                     prDocument.Exec(
                         synchObj.BOTYPE,
                         elemData.Sign,
@@ -205,34 +195,22 @@ namespace TFlexOmpFix
                     // присоединенный файл
                     prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
+                    #endregion Документация
+
                     break;
 
                 case (decimal)ObjTypes.Detail:
 
-                    if (Regex.IsMatch(elemData.Sign, @"^\d{4}-\d{4}$"))
-                    {
-                        // создание оснастки
-                        CreateFixture pd = new CreateFixture();
-                        pd.Exec(
-                            elemData.Sign,
-                            elemData.Name,
-                            ownerCode,
-                            synchObj.BOSTATECODE,
-                            ompUserCode,
-                            ref code);
-                    }
-                    else
-                    {
-                        // создание детали
-                        CreateDetail pd = new CreateDetail();
-                        pd.Exec(
-                            elemData.Sign,
-                            elemData.Name,
-                            ownerCode,
-                            synchObj.BOSTATECODE,
-                            ompUserCode,
-                            ref code);
-                    }
+                    #region Деталь
+
+                    CreateDetail pd = new CreateDetail();
+                    pd.Exec(
+                        elemData.Sign,
+                        elemData.Name,
+                        ownerCode,
+                        synchObj.BOSTATECODE,
+                        ompUserCode,
+                        ref code);
 
                     // присоединенный файл
                     prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
@@ -255,7 +233,10 @@ namespace TFlexOmpFix
                             }
                             catch (FileNotFoundException)
                             {
-                                iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    modelData.Section, modelData.Position, modelData.Sign,
+                                    modelData.Name, modelData.Qty, modelData.DocCode,
+                                    modelData.FilePath, "Файл " + modelData.FilePath + " не найден!");
                             }
                             catch (Exception)
                             {
@@ -277,7 +258,9 @@ namespace TFlexOmpFix
                             }
                             catch (FileNotFoundException)
                             {
-                                iLog.Write("ОШИБКА! Файл " + fragment.FullFilePath + " не найден!");
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    null, null, null, null, null, null, fragment.FilePath,
+                                    "Файл " + fragment.FullFilePath + " не найден!");
                             }
                             catch (Exception)
                             {
@@ -285,6 +268,84 @@ namespace TFlexOmpFix
                             }
                         }
                     }
+
+                    #endregion Деталь
+
+                    break;
+
+                case (decimal)ObjTypes.Fixture:
+
+                    #region Оснастка
+
+                    // создание оснастки
+                    CreateFixture cf = new CreateFixture();
+                    cf.Exec(
+                        elemData.Sign,
+                        elemData.Name,
+                        ownerCode,
+                        synchObj.BOSTATECODE,
+                        ompUserCode,
+                        fixTypeCode,
+                        ref code);
+
+                    // присоединенный файл
+                    prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
+
+                    // модели для детали
+                    var fix_models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem);
+
+                    foreach (var model in fix_models)
+                    {
+                        ElementDataConfig modelDataConfig = new ElementDataConfig(model, scheme);
+                        ElementData modelData = modelDataConfig.ConfigData();
+
+                        if (modelData.FilePath != null)
+                        {
+                            try
+                            {
+                                decimal linkdoccode = 0;
+
+                                prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP, doccode, ref linkdoccode);
+                            }
+                            catch (FileNotFoundException)
+                            {
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    modelData.Section, modelData.Position, modelData.Sign,
+                                    modelData.Name, modelData.Qty, modelData.DocCode,
+                                    modelData.FilePath, "Файл " + modelData.FilePath + " не найден!");
+                            }
+                            catch (Exception)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+
+                    // моделями также являются невидимые фрагменты у деталей
+                    foreach (var fragment in doc.GetFragments().Where(x => !x.Visible))
+                    {
+                        if (fragment.FullFilePath != null)
+                        {
+                            try
+                            {
+                                decimal linkdoccode = 0;
+
+                                prFile.Exec(code, fragment.FullFilePath, ompUserCode, synchObj.FILEGROUP, doccode, ref linkdoccode);
+                            }
+                            catch (FileNotFoundException)
+                            {
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    null, null, null, null, null, null, fragment.FilePath,
+                                    "Файл " + fragment.FullFilePath + " не найден!");
+                            }
+                            catch (Exception)
+                            {
+                                throw;
+                            }
+                        }
+                    }
+
+                    #endregion Оснастка
 
                     break;
 
@@ -309,13 +370,14 @@ namespace TFlexOmpFix
 
                     elemData = dataConfig.ConfigData();
 
-                    LogElement(elemData);
+                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName, elemData.Section, elemData.Position,
+                        elemData.Sign, elemData.Name, elemData.Qty, elemData.DocCode, elemData.FilePath, null);
 
                     // если обозначение или секция пустые, то переход на следующий элемент
                     if (elemData.Sign == String.Empty || elemData.Section == String.Empty) continue;
 
                     // синхронизация с КИС "Омега"
-                    synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode);
+                    synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode, elemData.Sign);
 
                     // переход на следующий элемент, если позиция не синхронизирована
                     if (synchObj == null) continue;
@@ -324,13 +386,15 @@ namespace TFlexOmpFix
                     {
                         case (decimal)ObjTypes.SpecFixture:
 
-                            // создание спецификации
+                            #region Спецификация оснастки
+
                             prSpec.Exec(
                                 elemData.Sign,
                                 elemData.Name,
                                 ownerCode,
                                 synchObj.BOSTATECODE,
                                 ompUserCode,
+                                fixTypeCode,
                                 ref code);
 
                             // очищение спецификации
@@ -360,7 +424,10 @@ namespace TFlexOmpFix
                                 }
                                 catch (FileNotFoundException)
                                 {
-                                    iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        elemData.Section, elemData.Position, elemData.Sign,
+                                        elemData.Name, elemData.Qty, elemData.DocCode,
+                                        elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                 }
                                 catch (Exception)
                                 {
@@ -368,11 +435,14 @@ namespace TFlexOmpFix
                                 }
                             }
 
+                            #endregion Спецификация оснастки
+
                             break;
 
                         case (decimal)ObjTypes.SpecDraw:
 
-                            // создание спецификации
+                            #region Сборочный чертеж
+
                             prSpecDraw.Exec(
                                 elemData.Sign,
                                 elemData.Name,
@@ -384,10 +454,14 @@ namespace TFlexOmpFix
                             // присоединенный файл
                             prFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
 
+                            #endregion Сборочный чертеж
+
                             break;
 
                         case (decimal)ObjTypes.Document:
                         case (decimal)ObjTypes.UserDocument:
+
+                            #region Документация
 
                             prDocument.Exec(
                                 synchObj.BOTYPE,
@@ -407,7 +481,10 @@ namespace TFlexOmpFix
                                 }
                                 catch (FileNotFoundException)
                                 {
-                                    iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        elemData.Section, elemData.Position, elemData.Sign,
+                                        elemData.Name, elemData.Qty, elemData.DocCode,
+                                        elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                 }
                                 catch (Exception)
                                 {
@@ -415,36 +492,22 @@ namespace TFlexOmpFix
                                 }
                             }
 
+                            #endregion Документация
+
                             break;
 
                         case (decimal)ObjTypes.Detail:
 
-                            if (Regex.IsMatch(elemData.Sign, @"^\d{4}-\d{4}$"))
-                            {
-                                synchObj.KOTYPE = (decimal)ObjTypes.Fixture;
+                            #region Деталь
 
-                                // создание оснастки
-                                CreateFixture pd = new CreateFixture();
-                                pd.Exec(
-                                    elemData.Sign,
-                                    elemData.Name,
-                                    ownerCode,
-                                    synchObj.BOSTATECODE,
-                                    ompUserCode,
-                                    ref code);
-                            }
-                            else
-                            {
-                                // создание детали
-                                CreateDetail pd = new CreateDetail();
-                                pd.Exec(
-                                    elemData.Sign,
-                                    elemData.Name,
-                                    ownerCode,
-                                    synchObj.BOSTATECODE,
-                                    ompUserCode,
-                                    ref code);
-                            }
+                            CreateDetail pd = new CreateDetail();
+                            pd.Exec(
+                                elemData.Sign,
+                                elemData.Name,
+                                ownerCode,
+                                synchObj.BOSTATECODE,
+                                ompUserCode,
+                                ref code);
 
                             // файл
                             if (elemData.FilePath != null)
@@ -456,7 +519,11 @@ namespace TFlexOmpFix
                                 catch (FileNotFoundException)
                                 {
                                     doccode = 0;
-                                    iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        elemData.Section, elemData.Position, elemData.Sign,
+                                        elemData.Name, elemData.Qty, elemData.DocCode,
+                                        elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                 }
                                 catch (Exception)
                                 {
@@ -484,7 +551,10 @@ namespace TFlexOmpFix
                                     }
                                     catch (FileNotFoundException)
                                     {
-                                        iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                        iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                            elemData.Section, elemData.Position, elemData.Sign,
+                                            elemData.Name, elemData.Qty, elemData.DocCode,
+                                            elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                     }
                                     catch (Exception)
                                     {
@@ -517,13 +587,125 @@ namespace TFlexOmpFix
                                 }
                                 catch (FileNotFoundException)
                                 {
-                                    iLog.Write("ОШИБКА! Файл " + elemData.FilePath + " не найден!");
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        elemData.Section, elemData.Position, elemData.Sign,
+                                        elemData.Name, elemData.Qty, elemData.DocCode,
+                                        elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                 }
                                 catch (Exception)
                                 {
                                     throw;
                                 }
                             }
+
+                            #endregion Деталь
+
+                            break;
+
+                        case (decimal)ObjTypes.Fixture:
+
+                            #region Оснастка
+
+                            CreateFixture cf = new CreateFixture();
+                            cf.Exec(
+                                elemData.Sign,
+                                elemData.Name,
+                                ownerCode,
+                                synchObj.BOSTATECODE,
+                                ompUserCode,
+                                fixTypeCode,
+                                ref code);
+
+                            // файл
+                            if (elemData.FilePath != null)
+                            {
+                                try
+                                {
+                                    prFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, ref doccode);
+                                }
+                                catch (FileNotFoundException)
+                                {
+                                    doccode = 0;
+
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        elemData.Section, elemData.Position, elemData.Sign,
+                                        elemData.Name, elemData.Qty, elemData.DocCode,
+                                        elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                }
+                                catch (Exception)
+                                {
+                                    doccode = 0;
+                                    throw;
+                                }
+                            }
+
+                            // модели для детали
+                            var fix_models = structure.GetAllRowElements().Where(x => x.ParentRowElement == elem);
+
+                            foreach (var model in fix_models)
+                            {
+                                ElementDataConfig modelDataConfig = new ElementDataConfig(model, scheme);
+                                ElementData modelData = modelDataConfig.ConfigData();
+
+                                if (modelData.FilePath != null)
+                                {
+                                    try
+                                    {
+                                        decimal linkdoccode = 0;
+
+                                        prFile.Exec(code, modelData.FilePath, ompUserCode, synchObj.FILEGROUP,
+                                            (doccode == 0) ? null : (decimal?)doccode, ref linkdoccode);
+                                    }
+                                    catch (FileNotFoundException)
+                                    {
+                                        iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                            elemData.Section, elemData.Position, elemData.Sign,
+                                            elemData.Name, elemData.Qty, elemData.DocCode,
+                                            elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                    }
+                                    catch (Exception)
+                                    {
+                                        throw;
+                                    }
+                                }
+                            }
+
+                            // открывается документ на деталь, если есть
+                            if (elemData.FilePath != null)
+                            {
+                                try
+                                {
+                                    if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
+
+                                    // открыть документ входящей сборки в режиме чтения
+                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false, true);
+
+                                    // добавить документ в стек
+                                    stackDocs.Add(linkDoc);
+
+                                    // экспорт детали
+                                    ExportDoc(linkDoc, elemData.Sign);
+
+                                    // закрытие документа
+                                    linkDoc.Close();
+
+                                    // удалить из стека документ
+                                    stackDocs.Remove(linkDoc);
+                                }
+                                catch (FileNotFoundException)
+                                {
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        elemData.Section, elemData.Position, elemData.Sign,
+                                        elemData.Name, elemData.Qty, elemData.DocCode,
+                                        elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                }
+                                catch (Exception)
+                                {
+                                    throw;
+                                }
+                            }
+
+                            #endregion Оснастка
 
                             break;
 
@@ -550,11 +732,12 @@ namespace TFlexOmpFix
             #endregion элементы спецификации
         }
 
-        public FixtureOmpLoad(Settings settings, ILogging iLog, Document doc)
+        public FixtureOmpLoad(Settings settings, ILogging iLog, Document doc, int fixType)
         {
             this.settings = settings;
             this.iLog = iLog;
             this.doc = doc;
+            this.fixTypeCode = fixType;
         }
 
         /// <summary>
@@ -587,6 +770,9 @@ namespace TFlexOmpFix
         {
             try
             {
+                sw = new Stopwatch();
+                sw.Start();
+
                 ExportInizialize();
                 ExportDoc(doc);
             }
@@ -601,6 +787,10 @@ namespace TFlexOmpFix
                 stackDocs.Clear();
 
                 throw;
+            }
+            finally
+            {
+                sw.Stop();
             }
         }
     }

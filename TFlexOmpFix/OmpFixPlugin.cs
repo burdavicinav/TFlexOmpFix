@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using TFlex;
 using TFlex.Command;
 using TFlex.Model;
+using TFlexOmpFix.dialogs;
 
 namespace TFlexOmpFix
 {
@@ -74,43 +75,51 @@ namespace TFlexOmpFix
                     // логирование
                     ILogging iLog = new Log(doc.FilePath + "\\ompexp.txt");
 
+                    Settings settings = new Settings();
+
                     try
                     {
                         // настройки
                         ISettings iSettings = new SettingsRegistryService();
-                        Settings settings = iSettings.Read();
+
+                        settings = iSettings.Read();
 
                         // подключение к БД
                         Connection.SetInstance(settings);
 
-                        // транзакция
-                        Connection.OpenTransaction();
+                        FixtureTypeDialog dlg = new FixtureTypeDialog();
 
-                        // экспорт
-                        FixtureOmpLoad mngr = new FixtureOmpLoad(settings, iLog, doc);
-                        mngr.Export();
+                        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        {
+                            // транзакция
+                            Connection.OpenTransaction();
 
-                        // применение изменений
-                        Connection.Commit();
+                            // экспорт
+                            FixtureOmpLoad mngr = new FixtureOmpLoad(settings, iLog, doc, dlg.FixType);
+                            mngr.Export();
 
-                        MessageBox.Show(
-                            "Экспорт успешно завершен!",
-                            "Информация",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
+                            // применение изменений
+                            Connection.Commit();
+
+                            MessageBox.Show(
+                                "Экспорт успешно завершен!",
+                                "Информация",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        }
                     }
                     catch (Exception e)
                     {
                         Connection.Rollback();
-
-                        iLog.Write(e.Message);
-                        iLog.Write(e.StackTrace);
 
                         MessageBox.Show(
                             e.Message,
                             "Ошибка!",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
+
+                        iLog.Write(new TimeSpan(), settings.UserName, doc.FileName, null, null, null, null,
+                            null, null, null, e.Message + " * " + e.StackTrace);
                     }
                     finally
                     {

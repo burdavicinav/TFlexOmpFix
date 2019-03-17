@@ -96,6 +96,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="dialogs\FixtureTypeDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="dialogs\FixtureTypeDialog.Designer.cs">
+      <DependentUpon>FixtureTypeDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="DocStructureDocTypeNotValidHandler.cs" />
     <Compile Include="DocStructureHandler.cs" />
     <Compile Include="DocStructureParentNotValidHandler.cs" />
@@ -110,6 +116,7 @@
     <Compile Include="Exceptions\DocStructurePerentPropsException.cs" />
     <Compile Include="Exceptions\UserOwnerNotFoundException.cs" />
     <Compile Include="IDocStructureHandler.cs" />
+    <Compile Include="Objects\FIXTURE_TYPES.cs" />
     <Compile Include="Objects\V_SEPO_TFLEX_OBJ_SYNCH.cs" />
     <Compile Include="Procedures\CreateDocument.cs" />
     <Compile Include="Procedures\CreateFixture.cs" />
@@ -159,6 +166,9 @@
     <Compile Include="ElementField.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="dialogs\FixtureTypeDialog.resx">
+      <DependentUpon>FixtureTypeDialog.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>

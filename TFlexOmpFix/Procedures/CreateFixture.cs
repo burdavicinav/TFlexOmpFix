@@ -15,6 +15,7 @@ namespace TFlexOmpFix.Procedure
             OracleParameter p_owner = new OracleParameter("p_owner", OracleDbType.Decimal);
             OracleParameter p_state = new OracleParameter("p_state", OracleDbType.Decimal);
             OracleParameter p_user = new OracleParameter("p_user", OracleDbType.Decimal);
+            OracleParameter p_fixtype = new OracleParameter("p_fixtype", OracleDbType.Decimal);
             OracleParameter p_code = new OracleParameter(
                 "p_code",
                 OracleDbType.Decimal
@@ -34,6 +35,7 @@ namespace TFlexOmpFix.Procedure
                             p_owner,
                             p_state,
                             p_user,
+                            p_fixtype,
                             p_code
                 });
         }
@@ -44,6 +46,7 @@ namespace TFlexOmpFix.Procedure
             decimal owner,
             decimal state,
             decimal user,
+            decimal fixtype,
             ref decimal code)
         {
             OracleParameterCollection pars = command.Parameters;
@@ -53,6 +56,7 @@ namespace TFlexOmpFix.Procedure
             pars["p_owner"].Value = owner;
             pars["p_state"].Value = state;
             pars["p_user"].Value = user;
+            pars["p_fixtype"].Value = fixtype;
 
             command.ExecuteNonQuery();
 

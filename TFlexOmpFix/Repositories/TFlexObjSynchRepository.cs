@@ -1,21 +1,24 @@
 ﻿using Oracle.DataAccess.Client;
 using System;
+using System.Text.RegularExpressions;
 using TFlexOmpFix.Objects;
 
 namespace TFlexOmpFix.Repositories
 {
     public class TFlexObjSynchRepository
     {
-        public V_SEPO_TFLEX_OBJ_SYNCH GetSynchObj(string section, string docSign)
+        public V_SEPO_TFLEX_OBJ_SYNCH GetSynchObj(string section, string docSign, string sign)
         {
             OracleCommand cmd = new OracleCommand();
             cmd.CommandText =
                 @"select id, id_section, tflex_section, id_docsign, tflex_docsign,
                     kotype, botype, botypename, botypeshortname, bostatecode,
                     bostatename, bostateshortname, filegroup, filegroupname,
-                    filegroupshortname, owner, ownername, ompsection, ompsectionname
+                    filegroupshortname, owner, ownername, ompsection, ompsectionname,
+                    param_dependence, id_param, param, param_expression
                 from omp_adm.v_sepo_tflex_obj_synch
-                where tflex_section = :section and coalesce(tflex_docsign, '0') = :docsign";
+                where tflex_section = :section and coalesce(tflex_docsign, '0') = :docsign
+                order by param_dependence desc";
 
             cmd.Connection = Connection.GetInstance();
 
@@ -24,7 +27,7 @@ namespace TFlexOmpFix.Repositories
 
             using (OracleDataReader rd = cmd.ExecuteReader())
             {
-                if (rd.Read())
+                while (rd.Read())
                 {
                     V_SEPO_TFLEX_OBJ_SYNCH synch = new V_SEPO_TFLEX_OBJ_SYNCH();
 
@@ -51,14 +54,21 @@ namespace TFlexOmpFix.Repositories
 
                     synch.OMPSECTION = rd.GetDecimal(17);
                     synch.OMPSECTIONNAME = rd.GetString(18);
+                    synch.PARAM_DEPENDENCE = rd.GetInt32(19);
 
-                    return synch;
-                }
-                else
-                {
-                    return null;
+                    if (!rd.IsDBNull(20)) synch.ID_PARAM = rd.GetInt32(20);
+                    if (!rd.IsDBNull(21)) synch.PARAM = rd.GetString(21);
+                    if (!rd.IsDBNull(22)) synch.PARAM_EXPRESSION = rd.GetString(22);
+
+                    if (synch.PARAM_DEPENDENCE == 0 ||
+                        synch.PARAM_DEPENDENCE == 1 && Regex.IsMatch(sign, synch.PARAM_EXPRESSION))
+                    {
+                        return synch;
+                    }
                 }
             }
+
+            return null;
         }
     }
 }

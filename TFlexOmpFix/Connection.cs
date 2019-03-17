@@ -6,6 +6,8 @@ namespace TFlexOmpFix
     {
         private static OracleConnection connection;
 
+        private static OracleConnection logConnection;
+
         private static OracleTransaction transaction;
 
         private Connection()
@@ -24,11 +26,19 @@ namespace TFlexOmpFix
 
             connection = new OracleConnection(sbr.ToString());
             connection.Open();
+
+            logConnection = new OracleConnection(sbr.ToString());
+            logConnection.Open();
         }
 
         public static OracleConnection GetInstance()
         {
             return connection;
+        }
+
+        public static OracleConnection GetLogInstance()
+        {
+            return logConnection;
         }
 
         public static void OpenTransaction()
@@ -49,6 +59,8 @@ namespace TFlexOmpFix
         public static void Close()
         {
             if (connection != null) connection.Close();
+
+            if (logConnection != null) logConnection.Close();
         }
     }
 }
