@@ -238,6 +238,12 @@ namespace TFlexOmpFix
                                     modelData.Name, modelData.Qty, modelData.DocCode,
                                     modelData.FilePath, "Файл " + modelData.FilePath + " не найден!");
                             }
+                            catch (DirectoryNotFoundException)
+                            {
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    null, null, null, null, null, null, modelData.FilePath,
+                                    "Задан некорректный путь к файлу: " + modelData.FilePath);
+                            }
                             catch (Exception)
                             {
                                 throw;
@@ -261,6 +267,12 @@ namespace TFlexOmpFix
                                 iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
                                     null, null, null, null, null, null, fragment.FilePath,
                                     "Файл " + fragment.FullFilePath + " не найден!");
+                            }
+                            catch (DirectoryNotFoundException)
+                            {
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    null, null, null, null, null, null, fragment.FilePath,
+                                    "Задан некорректный путь к файлу: " + fragment.FullFilePath);
                             }
                             catch (Exception)
                             {
@@ -314,6 +326,12 @@ namespace TFlexOmpFix
                                     modelData.Name, modelData.Qty, modelData.DocCode,
                                     modelData.FilePath, "Файл " + modelData.FilePath + " не найден!");
                             }
+                            catch (DirectoryNotFoundException)
+                            {
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    null, null, null, null, null, null, modelData.FilePath,
+                                    "Задан некорректный путь к файлу: " + modelData.FilePath);
+                            }
                             catch (Exception)
                             {
                                 throw;
@@ -337,6 +355,12 @@ namespace TFlexOmpFix
                                 iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
                                     null, null, null, null, null, null, fragment.FilePath,
                                     "Файл " + fragment.FullFilePath + " не найден!");
+                            }
+                            catch (DirectoryNotFoundException)
+                            {
+                                iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                    null, null, null, null, null, null, fragment.FullFilePath,
+                                    "Задан некорректный путь к файлу: " + fragment.FullFilePath);
                             }
                             catch (Exception)
                             {
@@ -525,6 +549,14 @@ namespace TFlexOmpFix
                                         elemData.Name, elemData.Qty, elemData.DocCode,
                                         elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                 }
+                                catch (DirectoryNotFoundException)
+                                {
+                                    doccode = 0;
+
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        null, null, null, null, null, null, elemData.FilePath,
+                                        "Задан некорректный путь к файлу: " + elemData.FilePath);
+                                }
                                 catch (Exception)
                                 {
                                     doccode = 0;
@@ -555,6 +587,12 @@ namespace TFlexOmpFix
                                             elemData.Section, elemData.Position, elemData.Sign,
                                             elemData.Name, elemData.Qty, elemData.DocCode,
                                             elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                    }
+                                    catch (DirectoryNotFoundException)
+                                    {
+                                        iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                            null, null, null, null, null, null, elemData.FilePath,
+                                            "Задан некорректный путь к файлу: " + elemData.FilePath);
                                     }
                                     catch (Exception)
                                     {
@@ -591,6 +629,12 @@ namespace TFlexOmpFix
                                         elemData.Section, elemData.Position, elemData.Sign,
                                         elemData.Name, elemData.Qty, elemData.DocCode,
                                         elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                }
+                                catch (DirectoryNotFoundException)
+                                {
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        null, null, null, null, null, null, elemData.FilePath,
+                                        "Задан некорректный путь к файлу: " + elemData.FilePath);
                                 }
                                 catch (Exception)
                                 {
@@ -632,6 +676,14 @@ namespace TFlexOmpFix
                                         elemData.Name, elemData.Qty, elemData.DocCode,
                                         elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
                                 }
+                                catch (DirectoryNotFoundException)
+                                {
+                                    doccode = 0;
+
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        null, null, null, null, null, null, elemData.FilePath,
+                                        "Задан некорректный путь к файлу: " + elemData.FilePath);
+                                }
                                 catch (Exception)
                                 {
                                     doccode = 0;
@@ -662,6 +714,12 @@ namespace TFlexOmpFix
                                             elemData.Section, elemData.Position, elemData.Sign,
                                             elemData.Name, elemData.Qty, elemData.DocCode,
                                             elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                    }
+                                    catch (DirectoryNotFoundException)
+                                    {
+                                        iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                            null, null, null, null, null, null, elemData.FilePath,
+                                            "Задан некорректный путь к файлу: " + elemData.FilePath);
                                     }
                                     catch (Exception)
                                     {
@@ -698,6 +756,12 @@ namespace TFlexOmpFix
                                         elemData.Section, elemData.Position, elemData.Sign,
                                         elemData.Name, elemData.Qty, elemData.DocCode,
                                         elemData.FilePath, "Файл " + elemData.FilePath + " не найден!");
+                                }
+                                catch (DirectoryNotFoundException)
+                                {
+                                    iLog.Write(sw.Elapsed, settings.UserName, this.doc.FileName,
+                                        null, null, null, null, null, null, elemData.FilePath,
+                                        "Задан некорректный путь к файлу: " + elemData.FilePath);
                                 }
                                 catch (Exception)
                                 {
