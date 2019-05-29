@@ -2,43 +2,11 @@
 
 namespace TFlexOmpFix.Procedure
 {
-    public class CreateDetail : OracleProcedure
+    public static class CreateDetail
     {
-        public CreateDetail()
-        {
-            Scheme = "omp_adm";
-            Package = "pkg_sepo_tflex_synch_omp";
-            Name = "create_detail";
+        private static OracleCommand command;
 
-            OracleParameter p_sign = new OracleParameter("p_sign", OracleDbType.Varchar2);
-            OracleParameter p_name = new OracleParameter("p_name", OracleDbType.Varchar2);
-            OracleParameter p_owner = new OracleParameter("p_owner", OracleDbType.Decimal);
-            OracleParameter p_state = new OracleParameter("p_state", OracleDbType.Decimal);
-            OracleParameter p_user = new OracleParameter("p_user", OracleDbType.Decimal);
-            OracleParameter p_code = new OracleParameter(
-                "p_code",
-                OracleDbType.Decimal
-                );
-            p_code.Direction = System.Data.ParameterDirection.Output;
-
-            command = new OracleCommand();
-            command.Connection = Connection.GetInstance();
-            command.CommandType = System.Data.CommandType.StoredProcedure;
-            command.CommandText = FullName;
-
-            command.Parameters.AddRange(
-                new OracleParameter[]
-                {
-                            p_sign,
-                            p_name,
-                            p_owner,
-                            p_state,
-                            p_user,
-                            p_code
-                });
-        }
-
-        public void Exec(
+        public static void Exec(
             string sign,
             string name,
             decimal owner,
@@ -46,6 +14,36 @@ namespace TFlexOmpFix.Procedure
             decimal user,
             ref decimal code)
         {
+            if (command == null)
+            {
+                OracleParameter p_sign = new OracleParameter("p_sign", OracleDbType.Varchar2);
+                OracleParameter p_name = new OracleParameter("p_name", OracleDbType.Varchar2);
+                OracleParameter p_owner = new OracleParameter("p_owner", OracleDbType.Decimal);
+                OracleParameter p_state = new OracleParameter("p_state", OracleDbType.Decimal);
+                OracleParameter p_user = new OracleParameter("p_user", OracleDbType.Decimal);
+                OracleParameter p_code = new OracleParameter(
+                    "p_code",
+                    OracleDbType.Decimal
+                    );
+                p_code.Direction = System.Data.ParameterDirection.Output;
+
+                command = new OracleCommand();
+                command.Connection = Connection.GetInstance();
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.CommandText = "omp_adm.pkg_sepo_tflex_synch_omp.create_detail";
+
+                command.Parameters.AddRange(
+                    new OracleParameter[]
+                    {
+                            p_sign,
+                            p_name,
+                            p_owner,
+                            p_state,
+                            p_user,
+                            p_code
+                    });
+            }
+
             OracleParameterCollection pars = command.Parameters;
 
             pars["p_sign"].Value = sign;

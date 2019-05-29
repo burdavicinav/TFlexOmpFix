@@ -115,6 +115,7 @@
     <Compile Include="Exceptions\DocStructureParentException.cs" />
     <Compile Include="Exceptions\DocStructurePerentPropsException.cs" />
     <Compile Include="Exceptions\UserOwnerNotFoundException.cs" />
+    <Compile Include="IDocLogging.cs" />
     <Compile Include="IDocStructureHandler.cs" />
     <Compile Include="Objects\FIXTURE_TYPES.cs" />
     <Compile Include="Objects\V_SEPO_TFLEX_OBJ_SYNCH.cs" />

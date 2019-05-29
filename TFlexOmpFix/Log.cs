@@ -5,23 +5,43 @@ using System.Text;
 
 namespace TFlexOmpFix
 {
-    public class Log : ILogging
+    public class Log : IDocLogging
     {
         private StreamWriter log;
+
+        public TimeSpan Span { get; set; }
+
+        public string User { get; set; }
+
+        public string Document { get; set; }
+
+        public string Section { get; set; }
+
+        public string Position { get; set; }
+
+        public string Sign { get; set; }
+
+        public string Name { get; set; }
+
+        public decimal? Qty { get; set; }
+
+        public string Doccode { get; set; }
+
+        public string FilePath { get; set; }
+
+        public string Error { get; set; }
 
         public Log(string path)
         {
             log = new StreamWriter(path);
         }
 
-        public void Write(TimeSpan span, string user, string doc, string section,
-            string position, string sign, string name, decimal? qty, string doccode,
-            string filePath, string error)
+        public void Write()
         {
             StringBuilder db_error = new StringBuilder();
 
             string timespan = string.Format("{0}:{1}:{2}:{3}",
-                span.Hours, span.Minutes, span.Seconds, span.Milliseconds);
+                Span.Hours, Span.Minutes, Span.Seconds, Span.Milliseconds);
 
             OracleCommand command = new OracleCommand();
             command.Connection = Connection.GetLogInstance();
@@ -30,18 +50,18 @@ namespace TFlexOmpFix
 
             command.Parameters.Add("p_date", DateTime.Now);
             command.Parameters.Add("p_timespan", timespan);
-            command.Parameters.Add("p_loginname", user);
+            command.Parameters.Add("p_loginname", User);
             command.Parameters.Add("p_machine", System.Environment.MachineName);
-            command.Parameters.Add("p_doc", System.IO.Path.GetFileName(doc));
-            command.Parameters.Add("p_section", section);
-            command.Parameters.Add("p_position", position);
-            command.Parameters.Add("p_sign", sign);
-            command.Parameters.Add("p_name", name);
-            command.Parameters.Add("p_qty", qty);
-            command.Parameters.Add("p_doccode", doccode);
-            command.Parameters.Add("p_filepath", System.IO.Path.GetFileName(filePath));
+            command.Parameters.Add("p_doc", System.IO.Path.GetFileName(Document));
+            command.Parameters.Add("p_section", Section);
+            command.Parameters.Add("p_position", Position);
+            command.Parameters.Add("p_sign", Sign);
+            command.Parameters.Add("p_name", Name);
+            command.Parameters.Add("p_qty", Qty);
+            command.Parameters.Add("p_doccode", Doccode);
+            command.Parameters.Add("p_filepath", System.IO.Path.GetFileName(FilePath));
             command.Parameters.Add("p_omptype", null);
-            command.Parameters.Add("p_log", error);
+            command.Parameters.Add("p_log", Error);
 
             try
             {
@@ -59,26 +79,26 @@ namespace TFlexOmpFix
             rowText.Append(" * ");
             rowText.Append(timespan);
             rowText.Append(" * ");
-            rowText.Append(user);
+            rowText.Append(User);
             rowText.Append(" * ");
-            rowText.Append(section);
+            rowText.Append(Section);
             rowText.Append(" * ");
-            rowText.Append(position);
+            rowText.Append(Position);
             rowText.Append(" * ");
-            rowText.Append(sign);
+            rowText.Append(Sign);
             rowText.Append(" * ");
-            rowText.Append(name);
+            rowText.Append(Name);
             rowText.Append(" * ");
-            rowText.Append(qty);
+            rowText.Append(Qty);
             rowText.Append(" * ");
-            rowText.Append(doccode);
+            rowText.Append(Doccode);
             rowText.Append(" * ");
-            rowText.AppendLine(System.IO.Path.GetFileName(filePath));
+            rowText.AppendLine(System.IO.Path.GetFileName(FilePath));
 
-            if (error != null)
+            if (Error != null)
             {
                 rowText.Append("*");
-                rowText.AppendLine(error);
+                rowText.AppendLine(Error);
             }
 
             if (db_error.ToString() != String.Empty)
@@ -87,6 +107,13 @@ namespace TFlexOmpFix
             }
 
             log.WriteLine(rowText.ToString());
+        }
+
+        public void Write(Exception e)
+        {
+            Error = e.Message;
+
+            Write();
         }
 
         public void Close()

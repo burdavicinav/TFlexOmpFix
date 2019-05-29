@@ -73,7 +73,7 @@ namespace TFlexOmpFix
                     Document doc = TFlex.Application.ActiveDocument;
 
                     // логирование
-                    ILogging iLog = new Log(doc.FilePath + "\\ompexp.txt");
+                    IDocLogging log = new Log(doc.FilePath + "\\ompexp.txt");
 
                     Settings settings = new Settings();
 
@@ -95,7 +95,7 @@ namespace TFlexOmpFix
                             Connection.OpenTransaction();
 
                             // экспорт
-                            FixtureOmpLoad mngr = new FixtureOmpLoad(settings, iLog, doc, dlg.FixType);
+                            FixtureOmpLoad mngr = new FixtureOmpLoad(settings, log, doc, dlg.FixType);
                             mngr.Export();
 
                             // применение изменений
@@ -118,13 +118,17 @@ namespace TFlexOmpFix
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
 
-                        iLog.Write(new TimeSpan(), settings.UserName, doc.FileName, null, null, null, null,
-                            null, null, null, e.Message + " * " + e.StackTrace);
+                        log.Span = new TimeSpan();
+                        log.User = settings.UserName;
+                        log.FilePath = doc.FileName;
+                        log.Error = e.Message + " * " + e.StackTrace;
+
+                        log.Write();
                     }
                     finally
                     {
                         Connection.Close();
-                        iLog.Close();
+                        log.Close();
                     }
 
                     break;
