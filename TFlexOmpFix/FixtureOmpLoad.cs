@@ -160,10 +160,7 @@ namespace TFlexOmpFix
 
                     foreach (var file in files)
                     {
-                        FileInfo fileInfo = new FileInfo(file);
-
-                        string filePattern = Regex.Replace(fileInfo.Name, @"\D", "");
-                        if (filePattern == signPattern && file.Contains("СП"))
+                        if (file.Contains(elemData.Sign) && file.Contains("СП"))
                         {
                             AddFile.Exec(code, file, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
                         }
@@ -482,10 +479,7 @@ namespace TFlexOmpFix
                                 ref code);
 
                             // присоединенный файл
-                            if (elemData.FilePath != null)
-                            {
-                                AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
-                            }
+                            AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
 
                             #endregion Сборочный чертеж
 
