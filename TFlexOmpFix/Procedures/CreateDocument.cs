@@ -30,7 +30,6 @@ namespace TFlexOmpFix.Procedure
                 p_code.Direction = System.Data.ParameterDirection.Output;
 
                 command = new OracleCommand();
-                command.Connection = Connection.GetInstance();
                 command.CommandType = System.Data.CommandType.StoredProcedure;
                 command.CommandText = "omp_adm.pkg_sepo_tflex_synch_omp.create_document";
 
@@ -56,6 +55,7 @@ namespace TFlexOmpFix.Procedure
             pars["p_state"].Value = state;
             pars["p_user"].Value = user;
 
+            command.Connection = Connection.GetInstance();
             command.ExecuteNonQuery();
 
             decimal.TryParse(pars["p_code"].Value.ToString(), out code);

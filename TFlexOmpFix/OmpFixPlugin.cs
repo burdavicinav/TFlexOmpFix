@@ -68,7 +68,6 @@ namespace TFlexOmpFix
             switch ((Commands)id)
             {
                 case Commands.Export:
-
                     // Активный документ
                     Document doc = TFlex.Application.ActiveDocument;
 

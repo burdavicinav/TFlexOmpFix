@@ -24,7 +24,6 @@ namespace TFlexOmpFix.Procedure
             p_doccode.Direction = System.Data.ParameterDirection.Output;
 
             command = new OracleCommand();
-            command.Connection = Connection.GetInstance();
             command.CommandType = System.Data.CommandType.StoredProcedure;
             command.CommandText = "omp_adm.pkg_sepo_tflex_synch_omp.add_file";
 
@@ -81,6 +80,7 @@ namespace TFlexOmpFix.Procedure
                 pars["p_linkdoccode"].Value = linkdoccode;
                 pars["p_description"].Value = description;
 
+                command.Connection = Connection.GetInstance();
                 command.ExecuteNonQuery();
 
                 decimal.TryParse(pars["p_doccode"].Value.ToString(), out doccode);

@@ -18,7 +18,6 @@ namespace TFlexOmpFix.Procedure
 
             command = new OracleCommand
             {
-                Connection = Connection.GetInstance(),
                 CommandType = System.Data.CommandType.StoredProcedure,
                 CommandText = "omp_adm.pkg_sepo_tflex_synch_omp.add_element"
             };
@@ -60,6 +59,7 @@ namespace TFlexOmpFix.Procedure
             pars["p_position"].Value = position;
             pars["p_user"].Value = user;
 
+            command.Connection = Connection.GetInstance();
             command.ExecuteNonQuery();
         }
     }

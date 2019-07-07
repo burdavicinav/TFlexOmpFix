@@ -13,7 +13,6 @@ namespace TFlexOmpFix.Procedure
                 OracleParameter p_spc = new OracleParameter("p_spc", OracleDbType.Decimal);
 
                 command = new OracleCommand();
-                command.Connection = Connection.GetInstance();
                 command.CommandType = System.Data.CommandType.StoredProcedure;
                 command.CommandText = "omp_adm.pkg_sepo_tflex_synch_omp.clear_specification";
 
@@ -27,6 +26,8 @@ namespace TFlexOmpFix.Procedure
             var pars = command.Parameters;
 
             pars["p_spc"].Value = spc;
+
+            command.Connection = Connection.GetInstance();
             command.ExecuteNonQuery();
         }
     }

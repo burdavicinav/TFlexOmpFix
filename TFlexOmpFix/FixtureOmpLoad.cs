@@ -38,7 +38,7 @@ namespace TFlexOmpFix
 
         private readonly Document doc;
 
-        private Settings settings;
+        private readonly Settings settings;
 
         private decimal ompUserCode, ownerCode, fixTypeCode;
 
