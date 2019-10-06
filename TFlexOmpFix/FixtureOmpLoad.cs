@@ -34,7 +34,7 @@ namespace TFlexOmpFix
 
     public sealed class FixtureOmpLoad
     {
-        private IDocLogging log;
+        private readonly IDocLogging log;
 
         private readonly Document doc;
 
@@ -62,57 +62,88 @@ namespace TFlexOmpFix
             stackDocs = new List<Document>();
         }
 
-        private void ExportDoc(Document doc, string configuration = null)
+        private void IsValidStructure(ProductStructure structure)
         {
-            // валидность структуры
-            IsValid(doc, configuration);
+            Document currentDoc = structure.Document;
 
-            // структура изделия
-            ProductStructure structure;
-
-            if (doc.ModelConfigurations.ConfigurationCount == 0 || configuration == null)
+            // существование родителя
+            if (structure.GetAllRowElements().Where(x => x.ParentRowElement == null).Count() != 1)
             {
-                structure = doc
-                    .GetProductStructures()
-                    .FirstOrDefault();
-            }
-            else
-            {
-                structure = doc
-                    .GetProductStructures()
-                    .Where(x => x.Name == configuration)
-                    .FirstOrDefault();
+                throw new DocStructureParentException(currentDoc.FileName);
             }
 
-            // схема параметров
+            // проверка обозначения родителя на валидность
+            RowElement parentItem = structure.GetAllRowElements().Where(
+                x => x.ParentRowElement == null).FirstOrDefault();
+
+            SchemeDataConfig schemeConfig = new SchemeDataConfig(structure);
+            SchemeData scheme = schemeConfig.GetScheme();
+
+            ElementDataConfig dataConfig = new ElementDataConfig(parentItem, scheme);
+            ElementData itemData = dataConfig.ConfigData();
+
+            if (itemData.Sign == string.Empty ||
+                 itemData.MainSection != "Документация" && itemData.Sign.Contains("СБ"))
+            {
+                throw new DocStructureParentSignNotValidException(currentDoc.FileName);
+            }
+
+            // проверка типа документа у родителя
+            if ((itemData.MainSection == "Документация" ||
+                itemData.MainSection == "Сборочные единицы" ||
+                itemData.MainSection == "Комплекты")
+                && itemData.DocCode == string.Empty)
+            {
+                throw new DocStructureDocTypeNotValidException(currentDoc.FileName);
+            }
+
+            // проверка обозначения у родителя
+            if (itemData.Sign == String.Empty || itemData.Section == String.Empty)
+            {
+                throw new DocStructurePerentPropsException();
+            }
+        }
+
+        private void ExportStructure(ProductStructure structure, bool isConfig = false)
+        {
+            // верификация структуры
+            IsValidStructure(structure);
+
+            // текущий документ
+            Document currentDoc = structure.Document;
+
+            // схема структуры
             SchemeDataConfig schemeConfig = new SchemeDataConfig(structure);
             SchemeData scheme = schemeConfig.GetScheme();
 
             // родительский элемент
-            RowElement parentElem = structure.GetAllRowElements().
-                Where(x => x.ParentRowElement == null).FirstOrDefault();
+            RowElement parentItem = structure.GetAllRowElements().Where(
+                x => x.ParentRowElement == null).FirstOrDefault();
 
-            ElementDataConfig dataConfig = new ElementDataConfig(parentElem, scheme);
-            ElementData elemData = dataConfig.ConfigData();
+            ElementDataConfig dataConfig = new ElementDataConfig(parentItem, scheme);
+            ElementData itemData = dataConfig.ConfigData();
+
+            // если структура является исполнением, то обозначением головного элемента
+            // является наименование структуры
+            if (isConfig)
+            {
+                itemData.Sign = structure.Name;
+            }
 
             // логирование
             log.Span = sw.Elapsed;
             log.User = settings.UserName;
             log.Document = this.doc.FileName;
-            log.Section = elemData.Section;
-            log.Position = elemData.Position;
-            log.Sign = elemData.Sign;
-            log.Name = elemData.Name;
-            log.Qty = elemData.Qty;
-            log.Doccode = elemData.DocCode;
-            log.FilePath = elemData.FilePath;
+            log.Section = itemData.Section;
+            log.Position = itemData.Position;
+            log.Sign = itemData.Sign;
+            log.Name = itemData.Name;
+            log.Qty = itemData.Qty;
+            log.Doccode = itemData.DocCode;
+            log.FilePath = itemData.FilePath;
             log.Error = null;
 
             log.Write();
-
-            // проверка обозначения у родителя
-            if (elemData.Sign == String.Empty || elemData.Section == String.Empty)
-                throw new DocStructurePerentPropsException();
 
             // команды
             TFlexObjSynchRepository synchRep = new TFlexObjSynchRepository();
@@ -125,7 +156,7 @@ namespace TFlexOmpFix
             decimal doccode = 0;
 
             // синхронизация с КИС "Омега"
-            V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode, elemData.Sign);
+            V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(itemData.MainSection, itemData.DocCode, itemData.Sign);
 
             // если головной элемент не синхронизирован - выход
             if (synchObj == null) return;
@@ -139,8 +170,8 @@ namespace TFlexOmpFix
                     #region Спецификация оснастки
 
                     CreateSpecFix.Exec(
-                        elemData.Sign,
-                        elemData.Name,
+                        itemData.Sign,
+                        itemData.Name,
                         ownerCode,
                         synchObj.BOSTATECODE,
                         ompUserCode,
@@ -154,13 +185,13 @@ namespace TFlexOmpFix
                     parent = code;
 
                     // поиск файла спецификации по шаблону
-                    string signPattern = Regex.Replace(elemData.Sign, @"\D", "");
+                    string signPattern = Regex.Replace(itemData.Sign, @"\D", "");
 
-                    string[] files = Directory.GetFiles(doc.FilePath);
+                    string[] files = Directory.GetFiles(currentDoc.FilePath);
 
                     foreach (var file in files)
                     {
-                        if (file.Contains(elemData.Sign) && file.Contains("СП"))
+                        if (file.Contains(itemData.Sign) && file.Contains("СП"))
                         {
                             AddFile.Exec(code, file, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
                         }
@@ -175,15 +206,15 @@ namespace TFlexOmpFix
                     #region Сборочный чертеж
 
                     CreateSpecDraw.Exec(
-                        elemData.Sign,
-                        elemData.Name,
+                        itemData.Sign,
+                        itemData.Name,
                         ownerCode,
                         synchObj.BOSTATECODE,
                         ompUserCode,
                         ref code);
 
                     // присоединенный файл
-                    AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                    AddFile.Exec(code, currentDoc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
 
                     #endregion Сборочный чертеж
 
@@ -196,15 +227,15 @@ namespace TFlexOmpFix
 
                     CreateDocument.Exec(
                         synchObj.BOTYPE,
-                        elemData.Sign,
-                        elemData.Name,
+                        itemData.Sign,
+                        itemData.Name,
                         ownerCode,
                         synchObj.BOSTATECODE,
                         ompUserCode,
                         ref code);
 
                     // присоединенный файл
-                    AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                    AddFile.Exec(code, currentDoc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
 
                     #endregion Документация
 
@@ -215,18 +246,18 @@ namespace TFlexOmpFix
                     #region Деталь
 
                     CreateDetail.Exec(
-                        elemData.Sign,
-                        elemData.Name,
+                        itemData.Sign,
+                        itemData.Name,
                         ownerCode,
                         synchObj.BOSTATECODE,
                         ompUserCode,
                         ref code);
 
                     // присоединенный файл
-                    AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                    AddFile.Exec(code, currentDoc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
 
                     // модели для детали
-                    var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem);
+                    var models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentItem);
 
                     foreach (var model in models)
                     {
@@ -250,12 +281,12 @@ namespace TFlexOmpFix
                             decimal linkdoccode = 0;
 
                             AddFile.TryExec(log, code, modelData.FilePath, ompUserCode,
-                                synchObj.FILEGROUP, doccode, fileAdditional, ref linkdoccode);
+                                            synchObj.FILEGROUP, doccode, fileAdditional, ref linkdoccode);
                         }
                     }
 
                     // моделями также являются невидимые фрагменты у деталей
-                    foreach (var fragment in doc.GetFragments().Where(x => !x.Visible))
+                    foreach (var fragment in currentDoc.GetFragments().Where(x => !x.Visible))
                     {
                         if (fragment.FullFilePath != null)
                         {
@@ -274,7 +305,7 @@ namespace TFlexOmpFix
                             decimal linkdoccode = 0;
 
                             AddFile.TryExec(log, code, fragment.FullFilePath, ompUserCode,
-                                synchObj.FILEGROUP, doccode, fileAdditional, ref linkdoccode);
+                            synchObj.FILEGROUP, doccode, fileAdditional, ref linkdoccode);
                         }
                     }
 
@@ -287,8 +318,8 @@ namespace TFlexOmpFix
                     #region Оснастка
 
                     CreateFixture.Exec(
-                        elemData.Sign,
-                        elemData.Name,
+                        itemData.Sign,
+                        itemData.Name,
                         ownerCode,
                         synchObj.BOSTATECODE,
                         ompUserCode,
@@ -296,10 +327,10 @@ namespace TFlexOmpFix
                         ref code);
 
                     // присоединенный файл
-                    AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                    AddFile.Exec(code, currentDoc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
 
                     // модели для детали
-                    var fix_models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentElem);
+                    var fix_models = structure.GetAllRowElements().Where(x => x.ParentRowElement == parentItem);
 
                     foreach (var model in fix_models)
                     {
@@ -328,7 +359,7 @@ namespace TFlexOmpFix
                     }
 
                     // моделями также являются невидимые фрагменты у деталей
-                    foreach (var fragment in doc.GetFragments().Where(x => !x.Visible))
+                    foreach (var fragment in currentDoc.GetFragments().Where(x => !x.Visible))
                     {
                         if (fragment.FullFilePath != null)
                         {
@@ -363,39 +394,39 @@ namespace TFlexOmpFix
 
             #region элементы спецификации
 
-            if (elemData.MainSection == "Сборочные единицы")
+            if (itemData.MainSection == "Сборочные единицы")
             {
                 foreach (var elem in
                     structure
                     .GetAllRowElements()
-                    .Where(x => x.ParentRowElement == parentElem)
+                    .Where(x => x.ParentRowElement == parentItem)
                     )
                 {
                     // получение данных о документе
                     dataConfig = new ElementDataConfig(elem, scheme);
 
-                    elemData = dataConfig.ConfigData();
+                    itemData = dataConfig.ConfigData();
 
                     // логирование
                     log.Span = sw.Elapsed;
                     log.User = settings.UserName;
                     log.Document = this.doc.FileName;
-                    log.Section = elemData.Section;
-                    log.Position = elemData.Position;
-                    log.Sign = elemData.Sign;
-                    log.Name = elemData.Name;
-                    log.Qty = elemData.Qty;
-                    log.Doccode = elemData.DocCode;
-                    log.FilePath = elemData.FilePath;
+                    log.Section = itemData.Section;
+                    log.Position = itemData.Position;
+                    log.Sign = itemData.Sign;
+                    log.Name = itemData.Name;
+                    log.Qty = itemData.Qty;
+                    log.Doccode = itemData.DocCode;
+                    log.FilePath = itemData.FilePath;
                     log.Error = null;
 
                     log.Write();
 
                     // если обозначение или секция пустые, то переход на следующий элемент
-                    if (elemData.Sign == String.Empty || elemData.Section == String.Empty) continue;
+                    if (itemData.Sign == String.Empty || itemData.Section == String.Empty) continue;
 
                     // синхронизация с КИС "Омега"
-                    synchObj = synchRep.GetSynchObj(elemData.MainSection, elemData.DocCode, elemData.Sign);
+                    synchObj = synchRep.GetSynchObj(itemData.MainSection, itemData.DocCode, itemData.Sign);
 
                     // переход на следующий элемент, если позиция не синхронизирована
                     if (synchObj == null) continue;
@@ -407,8 +438,8 @@ namespace TFlexOmpFix
                             #region Спецификация оснастки
 
                             CreateSpecFix.Exec(
-                                elemData.Sign,
-                                elemData.Name,
+                                itemData.SignFull,
+                                itemData.Name,
                                 ownerCode,
                                 synchObj.BOSTATECODE,
                                 ompUserCode,
@@ -419,20 +450,20 @@ namespace TFlexOmpFix
                             ClearSpecification.Exec(code);
 
                             // если у сборки есть фрагмент...
-                            if (elemData.FilePath != null)
+                            if (itemData.FilePath != null)
                             {
                                 try
                                 {
-                                    if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
+                                    if (!File.Exists(itemData.FilePath)) throw new FileNotFoundException();
 
                                     // открыть документ входящей сборки в режиме чтения
-                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false, true);
+                                    Document linkDoc = TFlex.Application.OpenDocument(itemData.FilePath, false, true);
 
                                     // добавить документ в стек
                                     stackDocs.Add(linkDoc);
 
-                                    // экспорт входящей сборки
-                                    ExportDoc(linkDoc, elemData.Sign);
+                                    // экспорт документа
+                                    ExportDoc(linkDoc, itemData.SignFull);
 
                                     // закрытие документа
                                     linkDoc.Close();
@@ -445,13 +476,13 @@ namespace TFlexOmpFix
                                     log.Span = sw.Elapsed;
                                     log.User = settings.UserName;
                                     log.Document = this.doc.FileName;
-                                    log.Section = elemData.Section;
-                                    log.Position = elemData.Position;
-                                    log.Sign = elemData.Sign;
-                                    log.Name = elemData.Name;
-                                    log.Qty = elemData.Qty;
-                                    log.Doccode = elemData.DocCode;
-                                    log.FilePath = elemData.FilePath;
+                                    log.Section = itemData.Section;
+                                    log.Position = itemData.Position;
+                                    log.Sign = itemData.Sign;
+                                    log.Name = itemData.Name;
+                                    log.Qty = itemData.Qty;
+                                    log.Doccode = itemData.DocCode;
+                                    log.FilePath = itemData.FilePath;
                                     log.Error = null;
 
                                     log.Write(e);
@@ -471,15 +502,15 @@ namespace TFlexOmpFix
                             #region Сборочный чертеж
 
                             CreateSpecDraw.Exec(
-                                elemData.Sign,
-                                elemData.Name,
+                                itemData.Sign,
+                                itemData.Name,
                                 ownerCode,
                                 synchObj.BOSTATECODE,
                                 ompUserCode,
                                 ref code);
 
                             // присоединенный файл
-                            AddFile.Exec(code, doc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                            AddFile.Exec(code, currentDoc.FileName, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
 
                             #endregion Сборочный чертеж
 
@@ -492,17 +523,17 @@ namespace TFlexOmpFix
 
                             CreateDocument.Exec(
                                 synchObj.BOTYPE,
-                                elemData.Sign,
-                                elemData.Name,
+                                itemData.Sign,
+                                itemData.Name,
                                 ownerCode,
                                 synchObj.BOSTATECODE,
                                 ompUserCode,
                                 ref code);
 
                             // файл
-                            if (elemData.FilePath != null)
+                            if (itemData.FilePath != null)
                             {
-                                AddFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                                AddFile.Exec(code, itemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
                             }
 
                             #endregion Документация
@@ -514,17 +545,17 @@ namespace TFlexOmpFix
                             #region Деталь
 
                             CreateDetail.Exec(
-                                elemData.Sign,
-                                elemData.Name,
+                                itemData.SignFull,
+                                itemData.Name,
                                 ownerCode,
                                 synchObj.BOSTATECODE,
                                 ompUserCode,
                                 ref code);
 
                             // файл
-                            if (elemData.FilePath != null)
+                            if (itemData.FilePath != null)
                             {
-                                AddFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                                AddFile.Exec(code, itemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
                             }
 
                             // модели для детали
@@ -552,25 +583,25 @@ namespace TFlexOmpFix
                                     decimal linkdoccode = 0;
 
                                     AddFile.TryExec(log, code, modelData.FilePath, ompUserCode,
-                                        synchObj.FILEGROUP, (doccode == 0) ? null : (decimal?)doccode, fileAdditional, ref linkdoccode);
+                                    synchObj.FILEGROUP, (doccode == 0) ? null : (decimal?)doccode, fileAdditional, ref linkdoccode);
                                 }
                             }
 
                             // открывается документ на деталь, если есть
-                            if (elemData.FilePath != null)
+                            if (itemData.FilePath != null)
                             {
                                 try
                                 {
-                                    if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
+                                    if (!File.Exists(itemData.FilePath)) throw new FileNotFoundException();
 
                                     // открыть документ входящей сборки в режиме чтения
-                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false, true);
+                                    Document linkDoc = TFlex.Application.OpenDocument(itemData.FilePath, false, true);
 
                                     // добавить документ в стек
                                     stackDocs.Add(linkDoc);
 
-                                    // экспорт детали
-                                    ExportDoc(linkDoc, elemData.Sign);
+                                    // экспорт документа
+                                    ExportDoc(linkDoc, itemData.SignFull);
 
                                     // закрытие документа
                                     linkDoc.Close();
@@ -583,13 +614,13 @@ namespace TFlexOmpFix
                                     log.Span = sw.Elapsed;
                                     log.User = settings.UserName;
                                     log.Document = this.doc.FileName;
-                                    log.Section = elemData.Section;
-                                    log.Position = elemData.Position;
-                                    log.Sign = elemData.Sign;
-                                    log.Name = elemData.Name;
-                                    log.Qty = elemData.Qty;
-                                    log.Doccode = elemData.DocCode;
-                                    log.FilePath = elemData.FilePath;
+                                    log.Section = itemData.Section;
+                                    log.Position = itemData.Position;
+                                    log.Sign = itemData.Sign;
+                                    log.Name = itemData.Name;
+                                    log.Qty = itemData.Qty;
+                                    log.Doccode = itemData.DocCode;
+                                    log.FilePath = itemData.FilePath;
                                     log.Error = null;
 
                                     log.Write(e);
@@ -609,8 +640,8 @@ namespace TFlexOmpFix
                             #region Оснастка
 
                             CreateFixture.Exec(
-                                elemData.Sign,
-                                elemData.Name,
+                                itemData.SignFull,
+                                itemData.Name,
                                 ownerCode,
                                 synchObj.BOSTATECODE,
                                 ompUserCode,
@@ -618,9 +649,9 @@ namespace TFlexOmpFix
                                 ref code);
 
                             // файл
-                            if (elemData.FilePath != null)
+                            if (itemData.FilePath != null)
                             {
-                                AddFile.Exec(code, elemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
+                                AddFile.Exec(code, itemData.FilePath, ompUserCode, synchObj.FILEGROUP, null, fileMain, ref doccode);
                             }
 
                             // модели для детали
@@ -653,20 +684,20 @@ namespace TFlexOmpFix
                             }
 
                             // открывается документ на деталь, если есть
-                            if (elemData.FilePath != null)
+                            if (itemData.FilePath != null)
                             {
                                 try
                                 {
-                                    if (!File.Exists(elemData.FilePath)) throw new FileNotFoundException();
+                                    if (!File.Exists(itemData.FilePath)) throw new FileNotFoundException();
 
                                     // открыть документ входящей сборки в режиме чтения
-                                    Document linkDoc = TFlex.Application.OpenDocument(elemData.FilePath, false, true);
+                                    Document linkDoc = TFlex.Application.OpenDocument(itemData.FilePath, false, true);
 
                                     // добавить документ в стек
                                     stackDocs.Add(linkDoc);
 
-                                    // экспорт детали
-                                    ExportDoc(linkDoc, elemData.Sign);
+                                    // экспорт документа
+                                    ExportDoc(linkDoc, itemData.SignFull);
 
                                     // закрытие документа
                                     linkDoc.Close();
@@ -679,13 +710,13 @@ namespace TFlexOmpFix
                                     log.Span = sw.Elapsed;
                                     log.User = settings.UserName;
                                     log.Document = this.doc.FileName;
-                                    log.Section = elemData.Section;
-                                    log.Position = elemData.Position;
-                                    log.Sign = elemData.Sign;
-                                    log.Name = elemData.Name;
-                                    log.Qty = elemData.Qty;
-                                    log.Doccode = elemData.DocCode;
-                                    log.FilePath = elemData.FilePath;
+                                    log.Section = itemData.Section;
+                                    log.Position = itemData.Position;
+                                    log.Sign = itemData.Sign;
+                                    log.Name = itemData.Name;
+                                    log.Qty = itemData.Qty;
+                                    log.Doccode = itemData.DocCode;
+                                    log.FilePath = itemData.FilePath;
                                     log.Error = null;
 
                                     log.Write(e);
@@ -713,8 +744,8 @@ namespace TFlexOmpFix
                             code,
                             synchObj.KOTYPE,
                             synchObj.OMPSECTION,
-                            elemData.Qty.Value,
-                            elemData.Position,
+                            itemData.Qty.Value,
+                            itemData.Position,
                             ompUserCode);
                     }
                 }
@@ -723,38 +754,67 @@ namespace TFlexOmpFix
             #endregion элементы спецификации
         }
 
+        private void ExportDoc(Document document, string parent = null)
+        {
+            ProductStructure structure;
+
+            // если в документе нет исполнений...
+            if (document.ModelConfigurations.ConfigurationCount == 0)
+            {
+                // проверка на единственность структуры
+                if (document.GetProductStructures().Count() != 1)
+                {
+                    throw new DocStructureException(document.FileName);
+                }
+
+                structure = document
+                    .GetProductStructures()
+                    .FirstOrDefault();
+
+                ExportStructure(structure);
+            }
+            else
+            {
+                if (parent == null)
+                {
+                    for (int i = 0; i < document.ModelConfigurations.ConfigurationCount; i++)
+                    {
+                        structure = document
+                            .GetProductStructures()
+                            .Where(x => x.Name == document.ModelConfigurations.GetConfigurationName(i))
+                            .FirstOrDefault();
+
+                        if (structure == null)
+                        {
+                            throw new DocStructureException(document.FileName);
+                        }
+
+                        ExportStructure(structure, true);
+                    }
+                }
+                else
+                {
+                    structure = document
+                            .GetProductStructures()
+                            .Where(x => x.Name == parent)
+                            .FirstOrDefault();
+
+                    if (structure == null)
+                    {
+                        throw new DocStructureException(document.FileName);
+                    }
+
+                    ExportStructure(structure, true);
+                }
+            }
+        }
+
         public FixtureOmpLoad(Settings settings, IDocLogging iLog, Document doc, int fixType)
         {
             this.settings = settings;
             this.log = iLog;
             this.doc = doc;
             this.fixTypeCode = fixType;
-        }
-
-        /// <summary>
-        /// Верификации документа
-        /// </summary>
-        /// <param name="doc">Документ</param>
-        /// <returns></returns>
-        public void IsValid(Document doc, string configuration = null)
-        {
-            // существование единственной структуры
-            DocStructureSingularHandler singHandler = new DocStructureSingularHandler();
-
-            // существование родителя
-            DocStructureParentHandler parentHandler = new DocStructureParentHandler();
-
-            // проверка обозначения родителя на валидность
-            DocStructureParentNotValidHandler parentSignHandler = new DocStructureParentNotValidHandler();
-
-            // проверка типа документа у родителя
-            DocStructureDocTypeNotValidHandler parentDocTypeHandler = new DocStructureDocTypeNotValidHandler();
-
-            singHandler.Next = parentHandler;
-            parentHandler.Next = parentSignHandler;
-            parentSignHandler.Next = parentDocTypeHandler;
-
-            singHandler.IsValid(doc, configuration);
         }
 
         public void Export()

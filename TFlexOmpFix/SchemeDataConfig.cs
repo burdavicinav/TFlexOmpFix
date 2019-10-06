@@ -41,6 +41,10 @@ namespace TFlexOmpFix
                         schemeData.DocCodeId = param.UID;
                         break;
 
+                    case "Исполнение":
+                        schemeData.ConfigId = param.UID;
+                        break;
+
                     default:
                         break;
                 }

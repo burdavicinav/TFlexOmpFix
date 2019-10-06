@@ -41,5 +41,9 @@ namespace TFlexOmpFix
         public string FilePath { get; set; }
 
         public string DocCode { get; set; }
+
+        public string Config { get; set; }
+
+        public string SignFull { get { return string.Concat(Sign, Config); } }
     }
 }

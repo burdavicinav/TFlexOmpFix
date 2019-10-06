@@ -59,7 +59,7 @@ namespace TFlexOmpFix
             command.Parameters.Add("p_name", Name);
             command.Parameters.Add("p_qty", Qty);
             command.Parameters.Add("p_doccode", Doccode);
-            command.Parameters.Add("p_filepath", System.IO.Path.GetFileName(FilePath));
+            command.Parameters.Add("p_filepath", FilePath);
             command.Parameters.Add("p_omptype", null);
             command.Parameters.Add("p_log", Error);
 
@@ -93,7 +93,7 @@ namespace TFlexOmpFix
             rowText.Append(" * ");
             rowText.Append(Doccode);
             rowText.Append(" * ");
-            rowText.AppendLine(System.IO.Path.GetFileName(FilePath));
+            rowText.AppendLine(FilePath);
 
             if (Error != null)
             {

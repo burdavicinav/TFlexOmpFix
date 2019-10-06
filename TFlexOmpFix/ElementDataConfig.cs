@@ -49,6 +49,8 @@ namespace TFlexOmpFix
 
             RowElementCell docCodeCell = Element.GetCell(Scheme.DocCodeId);
 
+            RowElementCell configCell = Element.GetCell(Scheme.ConfigId);
+
             #endregion ячейки
 
             // секция
@@ -74,6 +76,9 @@ namespace TFlexOmpFix
 
             // файл
             elemData.FilePath = Element.SourceFragmentPath;
+
+            // исполнение
+            elemData.Config = GetCellValue(configCell);
 
             return elemData;
         }
