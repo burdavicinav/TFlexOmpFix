@@ -51,6 +51,8 @@ namespace TFlexOmpFix
 
             RowElementCell configCell = Element.GetCell(Scheme.ConfigId);
 
+            RowElementCell typeComplectCell = Element.GetCell(Scheme.ObjectType);
+
             #endregion ячейки
 
             // секция
@@ -79,6 +81,17 @@ namespace TFlexOmpFix
 
             // исполнение
             elemData.Config = GetCellValue(configCell);
+
+            // тип объекта
+            try
+            {
+                elemData.ObjectType = (int)typeComplectCell.Value;
+            }
+            catch (Exception)
+            {
+                // в случае, если нет параметра в схеме
+                elemData.ObjectType = 0;
+            }
 
             return elemData;
         }

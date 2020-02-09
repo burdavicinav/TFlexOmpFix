@@ -15,5 +15,7 @@ namespace TFlexOmpFix
         public Guid DocCodeId { get; set; }
 
         public Guid ConfigId { get; set; }
+
+        public Guid ObjectType { get; set; }
     }
 }

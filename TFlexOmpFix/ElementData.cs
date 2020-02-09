@@ -45,5 +45,7 @@ namespace TFlexOmpFix
         public string Config { get; set; }
 
         public string SignFull { get { return string.Concat(Sign, Config); } }
+
+        public int ObjectType { get; set; }
     }
 }

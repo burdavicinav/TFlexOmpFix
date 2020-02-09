@@ -49,5 +49,7 @@ namespace TFlexOmpFix.Objects
         public virtual string PARAM { get; set; }
 
         public virtual string PARAM_EXPRESSION { get; set; }
+
+        public int ID_SECTYPE { get; set; }
     }
 }

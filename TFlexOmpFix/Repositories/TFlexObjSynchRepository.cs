@@ -1,5 +1,6 @@
 ﻿using Oracle.DataAccess.Client;
 using System;
+using System.Text;
 using System.Text.RegularExpressions;
 using TFlexOmpFix.Objects;
 
@@ -7,23 +8,26 @@ namespace TFlexOmpFix.Repositories
 {
     public class TFlexObjSynchRepository
     {
-        public V_SEPO_TFLEX_OBJ_SYNCH GetSynchObj(string section, string docSign, string sign)
+        public V_SEPO_TFLEX_OBJ_SYNCH GetSynchObj(string section, string docSign, string sign, int objectType)
         {
             OracleCommand cmd = new OracleCommand();
+
+            cmd.Parameters.Add("section", section);
+            cmd.Parameters.Add("docsign", (docSign == String.Empty) ? "0" : docSign);
+            cmd.Parameters.Add("objtype", objectType);
+
             cmd.CommandText =
                 @"select id, id_section, tflex_section, id_docsign, tflex_docsign,
                     kotype, botype, botypename, botypeshortname, bostatecode,
                     bostatename, bostateshortname, filegroup, filegroupname,
                     filegroupshortname, owner, ownername, ompsection, ompsectionname,
-                    param_dependence, id_param, param, param_expression
+                    param_dependence, id_param, param, param_expression, id_sectype
                 from omp_adm.v_sepo_tflex_obj_synch
                 where tflex_section = :section and coalesce(tflex_docsign, '0') = :docsign
+                    and coalesce(sectype_sign, 0) = :objtype
                 order by param_dependence desc";
 
             cmd.Connection = Connection.GetInstance();
-
-            cmd.Parameters.Add("section", section);
-            cmd.Parameters.Add("docsign", (docSign == String.Empty) ? "0" : docSign);
 
             using (OracleDataReader rd = cmd.ExecuteReader())
             {
@@ -59,6 +63,7 @@ namespace TFlexOmpFix.Repositories
                     if (!rd.IsDBNull(20)) synch.ID_PARAM = rd.GetInt32(20);
                     if (!rd.IsDBNull(21)) synch.PARAM = rd.GetString(21);
                     if (!rd.IsDBNull(22)) synch.PARAM_EXPRESSION = rd.GetString(22);
+                    if (!rd.IsDBNull(23)) synch.ID_SECTYPE = rd.GetInt32(23);
 
                     if (synch.PARAM_DEPENDENCE == 0 ||
                         synch.PARAM_DEPENDENCE == 1 && Regex.IsMatch(sign, synch.PARAM_EXPRESSION))

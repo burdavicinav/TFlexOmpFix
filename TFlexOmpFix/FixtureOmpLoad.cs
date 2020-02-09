@@ -80,6 +80,7 @@ namespace TFlexOmpFix
             SchemeData scheme = schemeConfig.GetScheme();
 
             ElementDataConfig dataConfig = new ElementDataConfig(parentItem, scheme);
+
             ElementData itemData = dataConfig.ConfigData();
 
             if (itemData.Sign == string.Empty ||
@@ -156,7 +157,11 @@ namespace TFlexOmpFix
             decimal doccode = 0;
 
             // синхронизация с КИС "Омега"
-            V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(itemData.MainSection, itemData.DocCode, itemData.Sign);
+            V_SEPO_TFLEX_OBJ_SYNCH synchObj = synchRep.GetSynchObj(
+                itemData.MainSection,
+                itemData.DocCode,
+                itemData.Sign,
+                itemData.ObjectType);
 
             // если головной элемент не синхронизирован - выход
             if (synchObj == null) return;
@@ -425,8 +430,15 @@ namespace TFlexOmpFix
                     // если обозначение или секция пустые, то переход на следующий элемент
                     if (itemData.Sign == String.Empty || itemData.Section == String.Empty) continue;
 
+                    //System.Windows.Forms.MessageBox.Show(itemData.SignFull + " |" + itemData.Section + " | "
+                    //    + itemData.MainSection + " | " + itemData.ObjectType);
+
                     // синхронизация с КИС "Омега"
-                    synchObj = synchRep.GetSynchObj(itemData.MainSection, itemData.DocCode, itemData.Sign);
+                    synchObj = synchRep.GetSynchObj(
+                        itemData.MainSection,
+                        itemData.DocCode,
+                        itemData.Sign,
+                        itemData.ObjectType);
 
                     // переход на следующий элемент, если позиция не синхронизирована
                     if (synchObj == null) continue;

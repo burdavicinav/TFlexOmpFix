@@ -9,7 +9,7 @@ namespace TFlexOmpFix
         public override Plugin CreateInstance()
         {
 #if DEBUG
-            //MessageBox.Show("Test!");
+            //].Show("Test!");
 
 #endif
             return new OmpFixPlugin(this);

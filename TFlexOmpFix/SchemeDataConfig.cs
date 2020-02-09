@@ -45,6 +45,10 @@ namespace TFlexOmpFix
                         schemeData.ConfigId = param.UID;
                         break;
 
+                    case "Тип для комплекта":
+                        schemeData.ObjectType = param.UID;
+                        break;
+
                     default:
                         break;
                 }
